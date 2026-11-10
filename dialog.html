@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pre-send checklist</title>
+<script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+<style>
+  body{font-family:"Segoe UI",system-ui,sans-serif;font-size:14px;margin:0;padding:16px;color:#201f1e}
+  h1{font-size:18px;margin:0 0 12px} dl{display:grid;grid-template-columns:90px 1fr;gap:4px 8px;margin:0 0 14px;padding:10px;background:#f3f2f1;border-radius:4px}
+  dt{color:#605e5c} dd{margin:0;word-break:break-word} .none{color:#605e5c;font-style:italic}
+  ul{list-style:none;padding:0;margin:0 0 14px} li{padding:6px 0;border-bottom:1px solid #edebe9}
+  label{display:flex;gap:8px;cursor:pointer} input{width:16px;height:16px;margin-top:2px;flex:none}
+  .row{display:flex;gap:8px} button{font:inherit;font-weight:600;padding:7px 16px;border-radius:3px;border:1px solid #0f6cbd;background:#0f6cbd;color:#fff;cursor:pointer}
+  button:disabled{background:#edebe9;border-color:#edebe9;color:#a19f9d;cursor:not-allowed} button.secondary{background:#fff;color:#0f6cbd}
+</style></head>
+<body>
+  <h1>Before you send</h1>
+  <dl id="details"></dl>
+  <ul id="items"></ul>
+  <div class="row"><button id="send" disabled>Send email</button><button id="cancel" class="secondary">Cancel</button></div>
+<script>
+  const ITEMS = [
+    "Correct client selected.",
+    "Correct recipient email address.",
+    "Correct report attached.",
+    "Correct job number.",
+    "Report checked and reviewed.",
+    "No other client's confidential information included.",
+  ];
+  const send = (type) => Office.context.ui.messageParent(JSON.stringify({ type }));
+  const el = (tag, text) => { const n = document.createElement(tag); if (text !== undefined) n.textContent = text; return n; };
+
+  function addRow(label, values) {
+    const dt = el("dt", label), dd = el("dd");
+    if (!values.length) { const s = el("span", "none"); s.textContent = "none"; dd.appendChild(s); }
+    else values.forEach((v) => { dd.appendChild(el("div", v)); });
+    document.getElementById("details").append(dt, dd);
+  }
+
+  Office.onReady(() => {
+    const ul = document.getElementById("items"), btn = document.getElementById("send");
+    const boxes = ITEMS.map((text, i) => {
+      const li = el("li"), label = el("label"), cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.onchange = () => { btn.disabled = !boxes.every((b) => b.checked); };
+      label.append(cb, el("span", `${i + 1}. ${text}`));
+      li.appendChild(label); ul.appendChild(li);
+      return cb;
+    });
+    btn.onclick = () => send("confirmed");
+    document.getElementById("cancel").onclick = () => send("cancel");
+
+    Office.context.ui.addHandlerAsync(Office.EventType.DialogParentMessageReceived, (arg) => {
+      const d = JSON.parse(arg.message);       // recipients, subject, attachments read at the moment of Send
+      addRow("To", d.to); addRow("Cc", d.cc); addRow("Bcc", d.bcc);
+      addRow("Subject", d.subject ? [d.subject] : []); addRow("Attachments", d.attachments);
+    }, () => send("ready"));
+  });
+</script></body></html>
